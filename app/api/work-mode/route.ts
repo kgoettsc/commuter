@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 
 const MTA_FEED_URL = 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/mnr%2Fgtfs-mnr';
-// Route 2 = Hudson Line (correct route for Goldens Bridge from user's location)
-const ROUTE_ID = '2';
-// Grand Central = Stop 1 for Route 2
-const GC_DEPARTURE_STOP = '1';
-// Goldens Bridge on Hudson Line = Stop 88 (NOT Stop 124 which is Harlem Line)
-const GOLDENS_BRIDGE_STOP_ID = '88';
+// Route 2 = Hudson Line, Route 1 = Harlem Line
+const HUDSON_LINE_ROUTE_ID = '2';
+const HARLEM_LINE_ROUTE_ID = '1';
+// Grand Central stop IDs
+const GC_STOP_IDS = ['1', '4'];
+// Goldens Bridge on Hudson Line = Stop 88, on Harlem Line = Stop 124
+const HUDSON_GB_STOP_ID = '88';
+const HARLEM_GB_STOP_ID = '124';
 const SIX_TRAIN_TRAVEL_MIN = 8; // Spring St -> Grand Central
 const PLATFORM_WALK_MIN = 6; // Walk from subway to Metro-North platform
 const SUBWAY_WALK_MIN = 6; // Walk from work to Spring St subway
@@ -73,16 +75,21 @@ async function fetchHarlemLineDepartures() {
 
       const tripUpdate = entity.tripUpdate;
       const stops = tripUpdate.stopTimeUpdate || [];
+      const routeId = tripUpdate.trip?.routeId;
 
-      // Filter for Route 2 (Hudson Line) only
-      if (tripUpdate.trip?.routeId !== ROUTE_ID) continue;
+      // Check if this is a Hudson Line or Harlem Line train
+      const isHudsonLine = routeId === HUDSON_LINE_ROUTE_ID;
+      const isHarlemLine = routeId === HARLEM_LINE_ROUTE_ID;
+
+      if (!isHudsonLine && !isHarlemLine) continue;
 
       // Check if this trip stops at both Grand Central AND Goldens Bridge
-      const hasGoldensBridge = stops.some(s => s.stopId === GOLDENS_BRIDGE_STOP_ID);
+      const gbStopId = isHudsonLine ? HUDSON_GB_STOP_ID : HARLEM_GB_STOP_ID;
+      const hasGoldensBridge = stops.some(s => s.stopId === gbStopId);
       if (!hasGoldensBridge) continue;
 
       // Find Grand Central departure stop
-      const gcDepartureStop = stops.find(s => s.stopId === GC_DEPARTURE_STOP);
+      const gcDepartureStop = stops.find(s => GC_STOP_IDS.includes(s.stopId || ''));
 
       if (!gcDepartureStop) continue;
 
@@ -118,6 +125,7 @@ async function fetchHarlemLineDepartures() {
           status,
           delay: Math.floor(delay / 60),
           tripId: tripUpdate.trip?.tripId || '',
+          route: isHudsonLine ? 'Hudson Line' : 'Harlem Line',
         });
       }
     }
@@ -169,7 +177,7 @@ export async function GET() {
             id: train.tripId,
             departureTime: mnDepartureTime,
             destination: train.destination,
-            route: 'Harlem Line',
+            route: train.route || 'Metro-North',
             status: train.status,
             delay: train.delay,
           },
