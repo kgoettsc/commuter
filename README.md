@@ -16,7 +16,6 @@ A real-time commuter dashboard for NYC Metro-North Harlem Line and 6 Train rider
 
 - Node.js 20 or later
 - npm or yarn
-- MTA API key (free, register at https://api.mta.info/)
 - Google Maps API key with Distance Matrix API enabled (optional, has free tier with billing account)
 
 ## Setup
@@ -45,10 +44,6 @@ cp .env.example .env.local
 Edit `.env.local` with your configuration:
 
 ```env
-# MTA API Key (Required for live 6 Train data)
-# Register at https://api.mta.info/
-MTA_API_KEY=your_mta_api_key_here
-
 # Google Maps API Key (Optional - will use time-based fallback without it)
 # Register at https://console.cloud.google.com/
 # Enable Distance Matrix API (requires billing, has $200/month free tier)
@@ -103,7 +98,6 @@ The app will be available at [http://localhost:3000](http://localhost:3000).
 1. Push your code to a GitHub repository
 2. Import the project in [Vercel](https://vercel.com)
 3. Add environment variables in Vercel project settings:
-   - `MTA_API_KEY`
    - `GOOGLE_MAPS_API_KEY` (optional)
    - `HOME_ADDRESS`
    - `GOLDENS_BRIDGE_ADDRESS`
@@ -165,7 +159,6 @@ commuter/
 
 ### No live data showing
 
-- Check that your `MTA_API_KEY` is correctly set in `.env.local`
 - MTA feeds may occasionally be unavailable - the app will fall back to estimated data
 - For Google Maps data, ensure billing is enabled (required even for free tier)
 

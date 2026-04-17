@@ -71,20 +71,8 @@ export async function GET() {
       return NextResponse.json(cachedData);
     }
 
-    // Fetch real-time data from MTA
-    const MTA_API_KEY = process.env.MTA_API_KEY;
-
-    // Try fetching with API key if available, otherwise try without
-    const headers: Record<string, string> = {};
-    if (MTA_API_KEY) {
-      headers['x-api-key'] = MTA_API_KEY;
-    } else {
-      console.warn('MTA_API_KEY not set - attempting request without API key');
-    }
-
-    const response = await fetch(MTA_FEED_URL, {
-      headers,
-    });
+    // Fetch real-time data from MTA (no API key required)
+    const response = await fetch(MTA_FEED_URL);
 
     if (!response.ok) {
       throw new Error(`MTA API returned ${response.status}`);

@@ -165,7 +165,7 @@ All routes now follow the same response pattern:
 
 ## Notes
 
-- The Harlem Line MTA feed doesn't require an API key, so it returns live data even when MTA_API_KEY is not set
+- MTA GTFS-RT feeds (both Harlem Line and 6 Train) no longer require an API key
 - The Google Maps Distance Matrix API requires a valid API key and billing to be enabled
 - All stub data generators use current time + intervals to provide realistic future departure times
 - Caching is maintained for all routes to reduce API calls and improve performance
