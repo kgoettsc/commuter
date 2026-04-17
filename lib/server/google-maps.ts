@@ -73,7 +73,7 @@ export async function getDriveTime(
   origin: string,
   destination: string
 ): Promise<DriveTimeResponse> {
-  if (true ||!GOOGLE_MAPS_API_KEY) {
+  if (!GOOGLE_MAPS_API_KEY) {
     console.warn('GOOGLE_MAPS_API_KEY not set - using time-based fallback');
     return {
       live: false,
