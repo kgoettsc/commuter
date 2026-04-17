@@ -17,6 +17,11 @@ export interface DriveTimeResponse {
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const DISTANCE_MATRIX_URL = 'https://maps.googleapis.com/maps/api/distancematrix/json';
 
+// Cache configuration - 5 minutes to balance freshness with API usage
+const CACHE_DURATION_MS = 5 * 60 * 1000;
+let cachedResult: DriveTimeResponse | null = null;
+let cacheTimestamp = 0;
+
 /**
  * Determine traffic level based on duration in traffic vs normal duration
  */
@@ -68,17 +73,30 @@ export function getTimeBasedFallback(): DriveTimeResult {
 
 /**
  * Fetch live drive time from Google Maps Distance Matrix API
+ * Results are cached for 5 minutes to reduce API usage
  */
 export async function getDriveTime(
   origin: string,
   destination: string
 ): Promise<DriveTimeResponse> {
+  // Check cache first
+  const now = Date.now();
+  if (cachedResult && (now - cacheTimestamp) < CACHE_DURATION_MS) {
+    return cachedResult;
+  }
+
   if (!GOOGLE_MAPS_API_KEY) {
     console.warn('GOOGLE_MAPS_API_KEY not set - using time-based fallback');
-    return {
+    const fallbackResult = {
       live: false,
       data: getTimeBasedFallback(),
     };
+
+    // Cache fallback result too
+    cachedResult = fallbackResult;
+    cacheTimestamp = now;
+
+    return fallbackResult;
   }
 
   try {
@@ -124,7 +142,7 @@ export async function getDriveTime(
       normalDuration.value
     );
 
-    return {
+    const result = {
       live: true,
       data: {
         durationSeconds: durationInTraffic.value,
@@ -132,13 +150,25 @@ export async function getDriveTime(
         trafficLevel,
       },
     };
+
+    // Update cache
+    cachedResult = result;
+    cacheTimestamp = Date.now();
+
+    return result;
   } catch (error) {
     console.error('Error fetching Google Maps data:', error);
 
     // Fall back to time-based estimate
-    return {
+    const fallbackResult = {
       live: false,
       data: getTimeBasedFallback(),
     };
+
+    // Cache fallback result too
+    cachedResult = fallbackResult;
+    cacheTimestamp = Date.now();
+
+    return fallbackResult;
   }
 }
