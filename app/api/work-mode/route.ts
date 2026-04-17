@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 
 const MTA_FEED_URL = 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/mnr%2Fgtfs-mnr';
-const GRAND_CENTRAL_STOP_ID = '1'; // Grand Central Terminal
+// Route 2 = Hudson Line (correct route for Goldens Bridge from user's location)
+const ROUTE_ID = '2';
+// Grand Central = Stop 1 for Route 2
+const GC_DEPARTURE_STOP = '1';
+// Goldens Bridge on Hudson Line = Stop 88 (NOT Stop 124 which is Harlem Line)
+const GOLDENS_BRIDGE_STOP_ID = '88';
 const SIX_TRAIN_TRAVEL_MIN = 8; // Spring St -> Grand Central
 const PLATFORM_WALK_MIN = 6; // Walk from subway to Metro-North platform
 const SUBWAY_WALK_MIN = 6; // Walk from work to Spring St subway
@@ -67,45 +72,53 @@ async function fetchHarlemLineDepartures() {
       if (!entity.tripUpdate) continue;
 
       const tripUpdate = entity.tripUpdate;
+      const stops = tripUpdate.stopTimeUpdate || [];
 
-      for (const stopTimeUpdate of tripUpdate.stopTimeUpdate || []) {
-        if (stopTimeUpdate.stopId === GRAND_CENTRAL_STOP_ID) {
-          const departureTime = stopTimeUpdate.departure?.time || stopTimeUpdate.arrival?.time;
+      // Filter for Route 2 (Hudson Line) only
+      if (tripUpdate.trip?.routeId !== ROUTE_ID) continue;
 
-          if (!departureTime) continue;
+      // Check if this trip stops at both Grand Central AND Goldens Bridge
+      const hasGoldensBridge = stops.some(s => s.stopId === GOLDENS_BRIDGE_STOP_ID);
+      if (!hasGoldensBridge) continue;
 
-          const deptTimestamp =
-            typeof departureTime === 'object' && 'low' in departureTime
-              ? (departureTime as any).low
-              : typeof departureTime === 'number'
-              ? departureTime
-              : parseInt(String(departureTime));
+      // Find Grand Central departure stop
+      const gcDepartureStop = stops.find(s => s.stopId === GC_DEPARTURE_STOP);
 
-          if (deptTimestamp < now_timestamp) continue;
+      if (!gcDepartureStop) continue;
 
-          const delay = stopTimeUpdate.departure?.delay || 0;
+      const stopTimeUpdate = gcDepartureStop;
 
-          let status = 'On-Time';
-          if (delay > 60) {
-            status = 'Late';
-          } else if (delay < -60) {
-            status = 'Early';
-          }
+      if (stopTimeUpdate) {
+        const departureTime = stopTimeUpdate.departure?.time || stopTimeUpdate.arrival?.time;
 
-          // For trains departing Grand Central, we need outbound trains
-          const destination = tripUpdate.trip?.routeId?.includes('1')
-            ? 'Southeast' // Outbound on Harlem Line
-            : 'Grand Central'; // Shouldn't happen for GCT departures
+        if (!departureTime) continue;
 
-          departures.push({
-            departureTime: new Date(deptTimestamp * 1000).toISOString(),
-            stopId: GRAND_CENTRAL_STOP_ID,
-            destination,
-            status,
-            delay: Math.floor(delay / 60),
-            tripId: tripUpdate.trip?.tripId || '',
-          });
+        const deptTimestamp =
+          typeof departureTime === 'object' && 'low' in departureTime
+            ? (departureTime as any).low
+            : typeof departureTime === 'number'
+            ? departureTime
+            : parseInt(String(departureTime));
+
+        if (deptTimestamp < now_timestamp) continue;
+
+        const delay = stopTimeUpdate.departure?.delay || 0;
+
+        let status = 'On-Time';
+        if (delay > 60) {
+          status = 'Late';
+        } else if (delay < -60) {
+          status = 'Early';
         }
+
+        departures.push({
+          departureTime: new Date(deptTimestamp * 1000).toISOString(),
+          stopId: stopTimeUpdate.stopId || 'GC',
+          destination: 'Goldens Bridge',
+          status,
+          delay: Math.floor(delay / 60),
+          tripId: tripUpdate.trip?.tripId || '',
+        });
       }
     }
 
@@ -128,17 +141,14 @@ export async function GET() {
       return NextResponse.json(cachedData);
     }
 
-    // Fetch train departures
+    // Fetch train departures (already filtered to only trains stopping at Goldens Bridge)
     const trainDepartures = await fetchHarlemLineDepartures();
-
-    // Filter for trains going outbound (to Southeast/Goldens Bridge)
-    const outbound = trainDepartures.filter((t) => t.destination === 'Southeast');
 
     // Generate 6 train departures
     const sixTrainDepartures = generate6TrainDepartures(new Date());
 
     // Calculate work mode options
-    const options = outbound
+    const options = trainDepartures
       .map((train) => {
         const mnDepartureTime = new Date(train.departureTime);
 

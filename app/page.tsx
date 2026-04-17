@@ -47,7 +47,7 @@ function getCountdown(leaveBy: Date, now: Date): Countdown | null {
 }
 
 function fmt(date: Date): string {
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export default function CommuterDashboard() {
@@ -154,7 +154,7 @@ export default function CommuterDashboard() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#e8e6e0', fontFamily: "'DM Mono', 'Courier New', monospace", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: '#666677' }}>
+        <div style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: '#8888a0' }}>
           Loading...
         </div>
       </div>
@@ -168,20 +168,20 @@ export default function CommuterDashboard() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         .header { padding: 32px 28px 20px; border-bottom: 1px solid #1a1a24; display: flex; justify-content: space-between; align-items: flex-end; }
-        .app-title { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 4px; color: #666677; text-transform: uppercase; }
+        .app-title { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 4px; color: #8888a0; text-transform: uppercase; }
         .clock { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 2px; color: #e8e6e0; line-height: 1; }
 
         .mode-bar { display: flex; align-items: center; gap: 14px; padding: 16px 28px; border-bottom: 1px solid #1a1a24; }
-        .from-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #666677; }
+        .from-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #8888a0; }
 
         .radio-group { display: flex; gap: 8px; }
         .radio-opt {
           display: flex; align-items: center; gap: 8px;
           cursor: pointer; padding: 6px 16px;
-          border: 1px solid #333344; border-radius: 2px;
+          border: 1px solid #404055; border-radius: 2px;
           font-family: 'DM Mono', monospace; font-size: 11px;
           letter-spacing: 2px; text-transform: uppercase;
-          color: #666677; transition: all 0.15s; user-select: none;
+          color: #8888a0; transition: all 0.15s; user-select: none;
         }
         .radio-opt:hover { background: #111120; }
         .radio-opt.active-home { color: #f5a623; border-color: #f5a623; }
@@ -194,24 +194,24 @@ export default function CommuterDashboard() {
         }
         .radio-dot-inner { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
-        .manual-tag { font-size: 9px; letter-spacing: 2px; color: #555566; text-transform: uppercase; }
+        .manual-tag { font-size: 9px; letter-spacing: 2px; color: #7777a0; text-transform: uppercase; }
 
         .hero { padding: 28px 28px 20px; border-bottom: 1px solid #1a1a24; }
-        .hero-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: #666677; margin-bottom: 8px; }
+        .hero-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: #8888a0; margin-bottom: 8px; }
         .hero-time { font-family: 'Bebas Neue', sans-serif; font-size: 72px; line-height: 1; letter-spacing: 2px; }
         .hero-meta { display: flex; gap: 24px; margin-top: 8px; }
-        .hero-meta-item { font-size: 11px; color: #666677; letter-spacing: 1px; }
-        .hero-meta-item span { color: #9999aa; }
+        .hero-meta-item { font-size: 11px; color: #8888a0; letter-spacing: 1px; }
+        .hero-meta-item span { color: #b0b0c0; }
 
         .cdown { padding: 14px 28px; border-bottom: 1px solid #1a1a24; display: flex; align-items: center; gap: 10px; }
-        .cdown-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #666677; }
+        .cdown-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #8888a0; }
         .cdown-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; }
         .cdown-val.urgent { color: #e05c5c; }
         .cdown-val.soon { color: #f5a623; }
         .cdown-val.ok { color: #4ec9b0; }
 
         .sched-head { display: grid; grid-template-columns: 1fr 1fr; padding: 10px 28px; border-bottom: 1px solid #1a1a24; }
-        .sched-head-cell { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #666677; }
+        .sched-head-cell { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #8888a0; }
         .sched-head-cell:last-child { text-align: right; }
 
         .sched-row { display: grid; grid-template-columns: 1fr 1fr; padding: 16px 28px; border-bottom: 1px solid #0e0e18; position: relative; }
@@ -219,18 +219,25 @@ export default function CommuterDashboard() {
         .sched-row.first::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; }
 
         .leave { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 1px; line-height: 1; display: flex; align-items: center; gap: 8px; }
-        .leave.dim { color: #666677; }
+        .leave.dim { color: #9090a8; }
 
         .pip { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .pip.live { animation: pulse 1.5s ease-in-out infinite; }
 
-        .departs { text-align: right; font-size: 13px; color: #666677; letter-spacing: 1px; padding-top: 6px; }
+        .departs {
+          text-align: right; font-size: 13px; color: #9090a8; letter-spacing: 1px; padding-top: 6px;
+          display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+        }
 
         .footer { padding: 20px 28px; margin-top: auto; }
-        .footer-line { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #444455; }
+        .footer-line { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #7777a0; }
 
-        .status-badge { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 6px; border-radius: 2px; margin-left: 8px; }
+        .status-badge {
+          font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
+          padding: 2px 6px; border-radius: 2px;
+          display: inline-block;
+        }
         .status-late { background: #e05c5c22; color: #e05c5c; }
         .status-ontime { background: #4ec9b022; color: #4ec9b0; }
       `}</style>
@@ -298,7 +305,7 @@ export default function CommuterDashboard() {
 
       {/* Debug info */}
       {process.env.NODE_ENV === 'development' && upcoming.length > 0 && (
-        <div style={{ padding: '8px 28px', fontSize: '9px', color: '#555566', borderBottom: '1px solid #0e0e18' }}>
+        <div style={{ padding: '8px 28px', fontSize: '9px', color: '#7777a0', borderBottom: '1px solid #0e0e18' }}>
           DEBUG: Showing {upcoming.length} options | Mode: {mode} | API: {mode === 'home' ? '/api/home-mode' : '/api/work-mode'}
         </div>
       )}
@@ -310,18 +317,20 @@ export default function CommuterDashboard() {
             {i === 0 && <div className="pip live" style={{ background: accent }} />}
             {fmt(train.leaveByTime)}
             {process.env.NODE_ENV === 'development' && (
-              <span style={{ fontSize: '8px', color: '#444455', marginLeft: '8px' }}>
+              <span style={{ fontSize: '8px', color: '#6666a0', marginLeft: '8px' }}>
                 ({train.leaveByTime.getHours()}:{String(train.leaveByTime.getMinutes()).padStart(2, '0')})
               </span>
             )}
           </div>
           <div className="departs">
-            {fmt(train.trainDeparture.departureTime)}
-            {process.env.NODE_ENV === 'development' && (
-              <span style={{ fontSize: '8px', color: '#444455', marginLeft: '4px' }}>
-                ({train.trainDeparture.departureTime.getHours()}:{String(train.trainDeparture.departureTime.getMinutes()).padStart(2, '0')})
-              </span>
-            )}
+            <div>
+              {fmt(train.trainDeparture.departureTime)}
+              {process.env.NODE_ENV === 'development' && (
+                <span style={{ fontSize: '8px', color: '#6666a0', marginLeft: '4px' }}>
+                  ({train.trainDeparture.departureTime.getHours()}:{String(train.trainDeparture.departureTime.getMinutes()).padStart(2, '0')})
+                </span>
+              )}
+            </div>
             {train.trainDeparture.status && train.trainDeparture.status !== 'On-Time' && (
               <span className={`status-badge ${train.trainDeparture.status === 'Late' ? 'status-late' : 'status-ontime'}`}>
                 {train.trainDeparture.status}

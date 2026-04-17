@@ -89,7 +89,9 @@ export async function getDriveTime(
     url.searchParams.set('departure_time', 'now');
     url.searchParams.set('traffic_model', 'best_guess');
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    });
 
     if (!response.ok) {
       throw new Error(`Google Maps API returned ${response.status}`);

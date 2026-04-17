@@ -4,7 +4,10 @@ import { getDriveTime } from '@/lib/server/google-maps';
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 
 const MTA_FEED_URL = 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/mnr%2Fgtfs-mnr';
-const GOLDENS_BRIDGE_STOP_ID = '124';
+// Route 2 = Hudson Line (correct route for Goldens Bridge from user's location)
+const ROUTE_ID = '2';
+// Goldens Bridge on Hudson Line = Stop 88 (NOT Stop 124 which is Harlem Line)
+const GOLDENS_BRIDGE_STOP_ID = '88';
 const HOME_ADDRESS = process.env.HOME_ADDRESS;
 const GOLDENS_BRIDGE_ADDRESS = process.env.GOLDENS_BRIDGE_ADDRESS;
 const CACHE_DURATION_MS = 60 * 1000; // 60 seconds
@@ -45,7 +48,9 @@ function generateStubDepartures() {
  */
 async function fetchHarlemLineDepartures() {
   try {
-    const response = await fetch(MTA_FEED_URL);
+    const response = await fetch(MTA_FEED_URL, {
+      signal: AbortSignal.timeout(10000), // 10 second timeout
+    });
 
     if (!response.ok) {
       throw new Error(`MTA API returned ${response.status}`);
@@ -64,50 +69,55 @@ async function fetchHarlemLineDepartures() {
       if (!entity.tripUpdate) continue;
 
       const tripUpdate = entity.tripUpdate;
+      const stops = tripUpdate.stopTimeUpdate || [];
 
-      // Find stop time updates for Goldens Bridge
-      for (const stopTimeUpdate of tripUpdate.stopTimeUpdate || []) {
-        if (stopTimeUpdate.stopId === GOLDENS_BRIDGE_STOP_ID) {
-          // Get departure time
-          const departureTime = stopTimeUpdate.departure?.time || stopTimeUpdate.arrival?.time;
+      // Filter for Route 2 (Hudson Line) only
+      if (tripUpdate.trip?.routeId !== ROUTE_ID) continue;
 
-          if (!departureTime) continue;
+      // Check if this is an inbound train (GB -> GC)
+      // Inbound trains start at GB (88) and end at Grand Central (Stop 1 or 4)
+      const gbIndex = stops.findIndex(s => s.stopId === GOLDENS_BRIDGE_STOP_ID);
+      if (gbIndex < 0) continue;
 
-          // Handle protobuf Long type
-          const deptTimestamp = typeof departureTime === 'object' && 'low' in departureTime
-            ? (departureTime as any).low
-            : typeof departureTime === 'number'
-            ? departureTime
-            : parseInt(String(departureTime));
+      const gcIndex = stops.findIndex(s => s.stopId === '1' || s.stopId === '4');
 
-          if (deptTimestamp < now_timestamp) continue;
+      // If GB comes before GC in the sequence, it's inbound
+      if (gcIndex < 0 || gbIndex >= gcIndex) continue;
 
-          // Calculate delay
-          const delay = stopTimeUpdate.departure?.delay || 0;
+      // Get the GB stop time
+      const stopTimeUpdate = stops[gbIndex];
+      const departureTime = stopTimeUpdate.departure?.time || stopTimeUpdate.arrival?.time;
 
-          // Determine status
-          let status = 'On-Time';
-          if (delay > 60) {
-            status = 'Late';
-          } else if (delay < -60) {
-            status = 'Early';
-          }
+      if (!departureTime) continue;
 
-          // Get destination
-          const destination = tripUpdate.trip?.routeId?.includes('1')
-            ? 'Grand Central'
-            : 'Southeast';
+      // Handle protobuf Long type
+      const deptTimestamp = typeof departureTime === 'object' && 'low' in departureTime
+        ? (departureTime as any).low
+        : typeof departureTime === 'number'
+        ? departureTime
+        : parseInt(String(departureTime));
 
-          departures.push({
-            departureTime: new Date(deptTimestamp * 1000).toISOString(),
-            stopId: GOLDENS_BRIDGE_STOP_ID,
-            destination,
-            status,
-            delay: Math.floor(delay / 60),
-            tripId: tripUpdate.trip?.tripId || '',
-          });
-        }
+      if (deptTimestamp < now_timestamp) continue;
+
+      // Calculate delay
+      const delay = stopTimeUpdate.departure?.delay || 0;
+
+      // Determine status
+      let status = 'On-Time';
+      if (delay > 60) {
+        status = 'Late';
+      } else if (delay < -60) {
+        status = 'Early';
       }
+
+      departures.push({
+        departureTime: new Date(deptTimestamp * 1000).toISOString(),
+        stopId: GOLDENS_BRIDGE_STOP_ID,
+        destination: 'Grand Central',
+        status,
+        delay: Math.floor(delay / 60),
+        tripId: tripUpdate.trip?.tripId || '',
+      });
     }
 
     // Sort by departure time
@@ -143,10 +153,15 @@ export async function GET() {
     }
 
     // Fetch train departures and drive time in parallel
-    const [trainDepartures, driveTimeResult] = await Promise.all([
+    const [allDepartures, driveTimeResult] = await Promise.all([
       fetchHarlemLineDepartures(),
       getDriveTime(HOME_ADDRESS, GOLDENS_BRIDGE_ADDRESS),
     ]);
+
+    // Filter to only trains going TO Grand Central (inbound)
+    const trainDepartures = allDepartures.filter(
+      (train) => train.destination === 'Grand Central'
+    );
 
     // Calculate home mode departures with leave-by times
     const commuteOptions = calculateHomeModeDepartures(
