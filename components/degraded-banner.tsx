@@ -6,13 +6,14 @@
 
 'use client';
 
+import { memo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 export interface DegradedBannerProps {
   isVisible: boolean;
 }
 
-export function DegradedBanner({ isVisible }: DegradedBannerProps) {
+export const DegradedBanner = memo(function DegradedBanner({ isVisible }: DegradedBannerProps) {
   if (!isVisible) return null;
 
   return (
@@ -30,4 +31,4 @@ export function DegradedBanner({ isVisible }: DegradedBannerProps) {
       </div>
     </div>
   );
-}
+});

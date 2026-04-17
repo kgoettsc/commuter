@@ -14,6 +14,7 @@ export type DepartureOption = WorkModeOption;
 interface UseDeparturesReturn {
   departures: DepartureOption[];
   isLoading: boolean;
+  isRefreshing: boolean;
   isLive: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
@@ -36,15 +37,22 @@ const REFRESH_INTERVAL_MS = 30000; // 30 seconds
 export function useDepartures(mode: CommuteMode): UseDeparturesReturn {
   const [departures, setDepartures] = useState<DepartureOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   /**
    * Fetch departure data from API
    */
   const fetchDepartures = useCallback(async () => {
     try {
-      setIsLoading(true);
+      // Only show loading spinner on initial load
+      if (isInitialLoad) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
       setError(null);
 
       const endpoint = mode === 'home' ? '/api/home-mode' : '/api/work-mode';
@@ -89,15 +97,21 @@ export function useDepartures(mode: CommuteMode): UseDeparturesReturn {
 
       setDepartures(options);
       setIsLive(data.live ?? false);
+      setIsInitialLoad(false);
     } catch (err) {
       console.error('Error fetching departures:', err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
-      setDepartures([]);
+      // Only clear departures on initial load error
+      if (isInitialLoad) {
+        setDepartures([]);
+      }
       setIsLive(false);
+      setIsInitialLoad(false);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  }, [mode]);
+  }, [mode, isInitialLoad]);
 
   // Initial fetch and setup auto-refresh
   useEffect(() => {
@@ -115,6 +129,7 @@ export function useDepartures(mode: CommuteMode): UseDeparturesReturn {
   return {
     departures,
     isLoading,
+    isRefreshing,
     isLive,
     error,
     refresh: fetchDepartures,

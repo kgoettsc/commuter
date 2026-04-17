@@ -6,6 +6,7 @@
 
 'use client';
 
+import { memo } from 'react';
 import type { CommuteMode } from '@/types/commute';
 import { Home, Building, Car, Train } from 'lucide-react';
 
@@ -15,7 +16,7 @@ export interface ModeToggleProps {
   isManualOverride?: boolean;
 }
 
-export function ModeToggle({ mode, onModeChange, isManualOverride = false }: ModeToggleProps) {
+export const ModeToggle = memo(function ModeToggle({ mode, onModeChange, isManualOverride = false }: ModeToggleProps) {
   const isHome = mode === 'home';
 
   return (
@@ -77,4 +78,4 @@ export function ModeToggle({ mode, onModeChange, isManualOverride = false }: Mod
       )}
     </div>
   );
-}
+});

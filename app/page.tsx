@@ -13,7 +13,7 @@ import { ModeToggle } from '@/components/mode-toggle';
 import { DegradedBanner } from '@/components/degraded-banner';
 import { HeroCountdown } from '@/components/hero-countdown';
 import { DepartureCard } from '@/components/departure-card';
-import { Clock } from 'lucide-react';
+import { Clock, TrainFront, Moon } from 'lucide-react';
 
 export default function CommuterDashboard() {
   const [now, setNow] = useState(() => new Date());
@@ -29,13 +29,16 @@ export default function CommuterDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter out past departures and take top 6
+  // Filter out past departures with a 30-second buffer to handle edge cases
+  // where user might be viewing a departure that just passed
+  const bufferMs = 30 * 1000;
   const upcomingDepartures = departures
-    .filter((dep) => dep.leaveByTime.getTime() > now.getTime())
+    .filter((dep) => dep.leaveByTime.getTime() > now.getTime() - bufferMs)
+    .sort((a, b) => a.leaveByTime.getTime() - b.leaveByTime.getTime())
     .slice(0, 6);
 
   const nextDeparture = upcomingDepartures[0];
-  const remainingDepartures = upcomingDepartures.slice(1, 6);
+  const remainingDepartures = upcomingDepartures.slice(1);
 
   // Solid background
   const bgClass = 'bg-zinc-950';
@@ -81,12 +84,23 @@ export default function CommuterDashboard() {
         />
         <DegradedBanner isVisible={!isLive} />
         <div className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center">
-            <div className="text-zinc-400 text-lg">
-              No upcoming departures available
+          <div className="text-center max-w-md">
+            <div className="flex justify-center mb-4">
+              {now.getHours() >= 23 || now.getHours() < 5 ? (
+                <Moon className="w-16 h-16 text-zinc-700" />
+              ) : (
+                <TrainFront className="w-16 h-16 text-zinc-700" />
+              )}
             </div>
-            <div className="text-zinc-600 text-sm mt-2">
-              Check back later for schedule updates
+            <div className="text-zinc-300 text-xl font-semibold mb-2">
+              No upcoming trains
+            </div>
+            <div className="text-zinc-500 text-sm">
+              {now.getHours() >= 23 || now.getHours() < 5 ? (
+                <>Service resumes around 5:00 AM with the first morning departures.</>
+              ) : (
+                <>No more trains scheduled for today. Check back tomorrow for the next available service.</>
+              )}
             </div>
           </div>
         </div>

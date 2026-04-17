@@ -6,6 +6,7 @@
 
 'use client';
 
+import { memo } from 'react';
 import type { DepartureOption } from '@/hooks/use-departures';
 import type { CommuteMode } from '@/types/commute';
 
@@ -23,7 +24,7 @@ function formatTime(date: Date): string {
   });
 }
 
-export function DepartureCard({
+export const DepartureCard = memo(function DepartureCard({
   departure,
   mode,
   isFirst = false,
@@ -79,4 +80,4 @@ export function DepartureCard({
       </div>
     </div>
   );
-}
+});
