@@ -1,7 +1,7 @@
 /**
  * Departures Fetching Hook
  *
- * Fetches departure data based on commute mode with auto-refresh
+ * Fetches departure data based on commute mode (manual refresh only)
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -20,19 +20,18 @@ interface UseDeparturesReturn {
   refresh: () => Promise<void>;
 }
 
-const REFRESH_INTERVAL_MS = 30000; // 30 seconds
-
 /**
- * Fetch and auto-refresh departure data based on commute mode
+ * Fetch departure data based on commute mode
  *
  * Behavior:
  * - Home mode: Fetches from /api/home-mode (drive time + train schedule)
  * - Work mode: Fetches from /api/work-mode (6 train + Metro-North connections)
- * - Auto-refreshes every 30 seconds
+ * - Fetches once on mount (no auto-refresh)
  * - Returns upcoming departures with leave-by times
+ * - Use the returned refresh() function to manually update data
  *
  * @param mode - Current commute mode ('home' or 'work')
- * @returns Object with departures array, loading state, and live status
+ * @returns Object with departures array, loading state, live status, and manual refresh function
  */
 export function useDepartures(mode: CommuteMode): UseDeparturesReturn {
   const [departures, setDepartures] = useState<DepartureOption[]>([]);
@@ -113,17 +112,9 @@ export function useDepartures(mode: CommuteMode): UseDeparturesReturn {
     }
   }, [mode, isInitialLoad]);
 
-  // Initial fetch and setup auto-refresh
+  // Initial fetch only (no auto-refresh)
   useEffect(() => {
     fetchDepartures();
-
-    const interval = setInterval(() => {
-      fetchDepartures();
-    }, REFRESH_INTERVAL_MS);
-
-    return () => {
-      clearInterval(interval);
-    };
   }, [fetchDepartures]);
 
   return {
