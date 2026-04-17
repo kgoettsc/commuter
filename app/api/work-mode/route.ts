@@ -83,13 +83,20 @@ async function fetchHarlemLineDepartures() {
 
       if (!isHudsonLine && !isHarlemLine) continue;
 
-      // Check if this trip stops at both Grand Central AND Goldens Bridge
+      // Check if this is an outbound train (GC -> GB)
+      // Find the stop indices to verify direction
       const gbStopId = isHudsonLine ? HUDSON_GB_STOP_ID : HARLEM_GB_STOP_ID;
-      const hasGoldensBridge = stops.some(s => s.stopId === gbStopId);
-      if (!hasGoldensBridge) continue;
+      const gcIndex = stops.findIndex(s => GC_STOP_IDS.includes(s.stopId || ''));
+      const gbIndex = stops.findIndex(s => s.stopId === gbStopId);
 
-      // Find Grand Central departure stop
-      const gcDepartureStop = stops.find(s => GC_STOP_IDS.includes(s.stopId || ''));
+      // Skip if either stop is missing
+      if (gcIndex < 0 || gbIndex < 0) continue;
+
+      // Skip if GB comes before GC (that's an inbound train)
+      if (gbIndex <= gcIndex) continue;
+
+      // Get Grand Central departure stop
+      const gcDepartureStop = stops[gcIndex];
 
       if (!gcDepartureStop) continue;
 
