@@ -6,7 +6,7 @@
 
 import { DateTime } from 'luxon';
 import type { CommuteOption, Departure, DriveInfo } from '@/types/commute';
-import type { HarlemLineDeparture, DriveTimeData } from '@/types/api';
+import type { HarlemLineDeparture, DriveTimeData, SixTrainDeparture } from '@/types/api';
 
 /**
  * Time-based buffer configuration for Home mode
@@ -107,6 +107,116 @@ export function calculateHomeModeDepartures(
       driveInfo,
       leaveByTime: leaveByTime.toJSDate(),
       totalDurationMinutes,
+    });
+  }
+
+  return options;
+}
+
+/**
+ * Subway and walking time constants for Work mode
+ * LOCKED SPEC - Do not modify these values
+ */
+const WORK_MODE_CONSTANTS = {
+  SPRING_ST_TO_GCT_MINUTES: 8, // 6 train travel time
+  GCT_PLATFORM_WALK_MINUTES: 6, // Walk from subway to Metro-North platform
+  WORK_TO_SPRING_ST_WALK_MINUTES: 6, // Walk from work to Spring St subway
+} as const;
+
+/**
+ * Work mode option - extends CommuteOption with 6 train details
+ */
+export interface WorkModeOption extends CommuteOption {
+  sixTrainDeparture: {
+    departureTime: Date;
+    arrivalTime: Date;
+  };
+}
+
+/**
+ * Calculate Work mode departures (office → Grand Central → home)
+ *
+ * Combines Metro-North departures from Grand Central with 6 train schedules
+ * to determine when to leave work to catch each train home.
+ *
+ * Algorithm:
+ * - For each Metro-North departure from GCT, find the latest viable 6 train
+ * - A 6 train is viable if: arrivalTimeGCT + 6 min walk ≤ Metro-North departure
+ * - Calculate leave-work time: 6 train departure - 6 min walk to Spring St
+ * - Skip Metro-North departures with no viable 6 train connection
+ *
+ * @param harlemDepartures - Metro-North departures from Grand Central
+ * @param sixTrainDepartures - 6 train departures from Spring St
+ * @returns Array of work mode options with leave-by times
+ */
+export function calculateWorkModeDepartures(
+  harlemDepartures: HarlemLineDeparture[],
+  sixTrainDepartures: SixTrainDeparture[]
+): WorkModeOption[] {
+  const options: WorkModeOption[] = [];
+
+  for (const harlemDep of harlemDepartures) {
+    const harlemTime = DateTime.fromISO(harlemDep.departureTime);
+
+    // Find all 6 trains that arrive at GCT with enough time for the platform walk
+    const viableSixTrains = sixTrainDepartures.filter((six) => {
+      const gctArrival = DateTime.fromISO(six.arrivalTimeGCT);
+      const withWalk = gctArrival.plus({
+        minutes: WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES,
+      });
+      return withWalk <= harlemTime;
+    });
+
+    // Skip this Metro-North departure if no viable 6 train connection exists
+    if (viableSixTrains.length === 0) continue;
+
+    // Select the latest viable 6 train (maximizes time at work)
+    const latestSix = viableSixTrains[viableSixTrains.length - 1];
+
+    // Calculate leave-by time: 6 train departure - walk to Spring St
+    const sixDepartureTime = DateTime.fromISO(latestSix.departureTime);
+    const leaveBy = sixDepartureTime.minus({
+      minutes: WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES,
+    });
+
+    // Build Metro-North departure object
+    const departure: Departure = {
+      id: harlemDep.tripId,
+      departureTime: harlemTime.toJSDate(),
+      destination: harlemDep.destination,
+      route: 'Harlem Line',
+      status: harlemDep.status as any,
+      delay: harlemDep.delay,
+    };
+
+    // Build subway info (reusing DriveInfo type for consistency)
+    // In work mode, "drive" represents the 6 train segment
+    const subwayInfo: DriveInfo = {
+      durationMinutes: WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES,
+      durationText: `${WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES} mins`,
+      trafficLevel: 'light', // Subway doesn't have traffic, always light
+      isLive: true, // Using real-time 6 train data
+    };
+
+    // Calculate total commute duration (walk to subway + 6 train + walk to platform)
+    const totalDurationMinutes =
+      WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES +
+      WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES +
+      WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES;
+
+    // Build 6 train departure details
+    const sixTrainDeparture = {
+      departureTime: sixDepartureTime.toJSDate(),
+      arrivalTime: DateTime.fromISO(latestSix.arrivalTimeGCT).toJSDate(),
+    };
+
+    // Build work mode option
+    options.push({
+      trainDeparture: departure,
+      driveInfo: subwayInfo,
+      leaveByTime: leaveBy.toJSDate(),
+      totalDurationMinutes,
+      sixTrainDeparture,
     });
   }
 
