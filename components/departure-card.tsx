@@ -67,7 +67,7 @@ export const DepartureCard = memo(function DepartureCard({
             <div className="mt-1">
               <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 uppercase tracking-wider">
                 {departure.trainDeparture.status}
-                {departure.trainDeparture.delay && Number(departure.trainDeparture.delay) > 0 && ` +${departure.trainDeparture.delay}min`}
+                {Number(departure.trainDeparture.delay) > 0 && ` +${departure.trainDeparture.delay}min`}
               </span>
             </div>
           )}

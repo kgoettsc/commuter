@@ -111,7 +111,7 @@ export function HeroCountdown({ departure, mode }: HeroCountdownProps) {
                 : 'text-red-500'
             }`}>
               {departure.trainDeparture.status}
-              {departure.trainDeparture.delay && Number(departure.trainDeparture.delay) > 0 && (
+              {Number(departure.trainDeparture.delay) > 0 && (
                 <span className="ml-1"> +{departure.trainDeparture.delay}min</span>
               )}
             </div>
