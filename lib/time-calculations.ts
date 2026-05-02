@@ -118,7 +118,7 @@ export function calculateHomeModeDepartures(
  * LOCKED SPEC - Do not modify these values
  */
 const WORK_MODE_CONSTANTS = {
-  SPRING_ST_TO_GCT_MINUTES: 8, // 6 train travel time
+  SPRING_ST_TO_GCT_MINUTES: 15, // 6 train default: wait + ride time
   GCT_PLATFORM_WALK_MINUTES: 6, // Walk from subway to Metro-North platform
   WORK_TO_SPRING_ST_WALK_MINUTES: 6, // Walk from work to Spring St subway
 } as const;
@@ -189,19 +189,26 @@ export function calculateWorkModeDepartures(
       delay: harlemDep.delay,
     };
 
+    // Compute actual ride time from the live 6-train data (departureTime → arrivalTimeGCT).
+    // Stub fallback data encodes 15 min; live data reflects the real trip time.
+    const gctArrivalTime = DateTime.fromISO(latestSix.arrivalTimeGCT);
+    const actualRideMinutes = Math.round(
+      gctArrivalTime.diff(sixDepartureTime, 'minutes').minutes
+    );
+
     // Build subway info (reusing DriveInfo type for consistency)
     // In work mode, "drive" represents the 6 train segment
     const subwayInfo: DriveInfo = {
-      durationMinutes: WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES,
-      durationText: `${WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES} mins`,
-      trafficLevel: 'light', // Subway doesn't have traffic, always light
-      isLive: true, // Using real-time 6 train data
+      durationMinutes: actualRideMinutes,
+      durationText: `${actualRideMinutes} mins`,
+      trafficLevel: 'light',
+      isLive: true,
     };
 
     // Calculate total commute duration (walk to subway + 6 train + walk to platform)
     const totalDurationMinutes =
       WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES +
-      WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES +
+      actualRideMinutes +
       WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES;
 
     // Build 6 train departure details

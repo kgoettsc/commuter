@@ -18,7 +18,7 @@ import {
 } from '@/components/board/primitives';
 
 const HARLEM_LINE_DURATION_MIN = 63;
-const SIX_TRAIN_DURATION_MIN = 8;
+const SIX_TRAIN_DURATION_MIN = 15;
 const SIX_TRAIN_WALK_MIN = 6;
 const GCT_PLATFORM_WALK_MIN = 6;
 const OFFICE_WALK_MIN = 4;
@@ -251,7 +251,9 @@ function DetailView({
                 accent={accent}
               >
                 <div className="text-[11px]" style={{ color: 'var(--night-mute)' }}>
-                  8 min · 4 stops to Grand Central
+                  {departure.sixTrainDeparture
+                    ? Math.round((departure.sixTrainDeparture.arrivalTime.getTime() - departure.sixTrainDeparture.departureTime.getTime()) / 60000)
+                    : SIX_TRAIN_DURATION_MIN} min · 7 stops to Grand Central
                 </div>
               </Step>
               <Step
@@ -310,7 +312,7 @@ function DetailView({
                 accent={accent}
               >
                 <div className="text-[11px]" style={{ color: 'var(--night-mute)' }}>
-                  8 min · 4 stops on 6 Downtown to Spring St
+                  {SIX_TRAIN_DURATION_MIN} min · 7 stops on 6 Downtown to Spring St
                 </div>
               </Step>
               <Step

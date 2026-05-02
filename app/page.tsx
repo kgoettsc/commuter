@@ -23,7 +23,7 @@ import {
 
 // ─── Constants (mirror lib/time-calculations.ts locked spec) ──────────────────
 const HARLEM_LINE_DURATION_MIN = 63;
-const SIX_TRAIN_DURATION_MIN = 8;
+const SIX_TRAIN_DURATION_MIN = 15;
 const SIX_TRAIN_WALK_MIN = 6;
 const GCT_PLATFORM_WALK_MIN = 6;
 const OFFICE_WALK_MIN = 4;
@@ -306,7 +306,7 @@ function buildLegs(departure: DepartureOption, mode: CommuteMode): Leg[] {
       {
         time: fmt(sixDep),
         name: 'Spring St',
-        meta: `6 train Uptown · ${SIX_TRAIN_DURATION_MIN} min`,
+        meta: `6 train Uptown · ${sixTrainDeparture ? Math.round((new Date(sixTrainDeparture.arrivalTime).getTime() - new Date(sixTrainDeparture.departureTime).getTime()) / 60000) : SIX_TRAIN_DURATION_MIN} min`,
       },
       {
         time: fmt(trainDeparture.departureTime),

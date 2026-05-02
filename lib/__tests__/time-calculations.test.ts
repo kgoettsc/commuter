@@ -234,8 +234,8 @@ describe('calculateWorkModeDepartures', () => {
 
       const sixTrainDepartures: SixTrainDeparture[] = [
         {
-          departureTime: '2026-04-17T16:40:00.000Z',
-          arrivalTimeGCT: '2026-04-17T16:48:00.000Z',
+          departureTime: '2026-04-17T16:30:00.000Z',
+          arrivalTimeGCT: '2026-04-17T16:45:00.000Z', // 15 min (default wait + ride)
           routeId: '6',
           tripId: '6-1',
         },
@@ -256,21 +256,21 @@ describe('calculateWorkModeDepartures', () => {
 
       // Verify sixTrainDeparture
       expect(option.sixTrainDeparture.departureTime).toEqual(
-        DateTime.fromISO('2026-04-17T16:40:00.000Z').toJSDate()
+        DateTime.fromISO('2026-04-17T16:30:00.000Z').toJSDate()
       );
       expect(option.sixTrainDeparture.arrivalTime).toEqual(
-        DateTime.fromISO('2026-04-17T16:48:00.000Z').toJSDate()
+        DateTime.fromISO('2026-04-17T16:45:00.000Z').toJSDate()
       );
 
       // Verify driveInfo (subway in this context)
-      expect(option.driveInfo.durationMinutes).toBe(8);
+      expect(option.driveInfo.durationMinutes).toBe(15);
       expect(option.driveInfo.isLive).toBe(true);
 
-      // Verify totalDurationMinutes (6 walk + 8 train + 6 walk = 20 min)
-      expect(option.totalDurationMinutes).toBe(20);
+      // Verify totalDurationMinutes (6 walk + 15 train + 6 walk = 27 min)
+      expect(option.totalDurationMinutes).toBe(27);
 
       // Verify leaveByTime
-      const expectedLeaveBy = DateTime.fromISO('2026-04-17T16:40:00.000Z')
+      const expectedLeaveBy = DateTime.fromISO('2026-04-17T16:30:00.000Z')
         .minus({ minutes: 6 })
         .toJSDate();
       expect(option.leaveByTime).toEqual(expectedLeaveBy);
