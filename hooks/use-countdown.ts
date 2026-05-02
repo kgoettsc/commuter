@@ -7,6 +7,8 @@
 import { useState, useEffect } from 'react';
 
 export interface Countdown {
+  /** Total milliseconds remaining (0 when expired) — used by UrgencyBar */
+  totalMs: number;
   /** Minutes remaining */
   minutes: number;
   /** Seconds remaining (0-59) */
@@ -74,6 +76,7 @@ function calculateCountdown(target: Date, now: Date): Countdown {
   // Handle expired countdown
   if (diff <= 0) {
     return {
+      totalMs: 0,
       minutes: 0,
       seconds: 0,
       totalSeconds: 0,
@@ -95,6 +98,7 @@ function calculateCountdown(target: Date, now: Date): Countdown {
   }
 
   return {
+    totalMs: diff,
     minutes,
     seconds,
     totalSeconds,

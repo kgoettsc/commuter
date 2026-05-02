@@ -41,3 +41,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 mta-realtime-feed.csv
+commuter.zip
+design_handoff_commute_board/board-bits.jsx
+design_handoff_commute_board/board-data.jsx
+design_handoff_commute_board/board-v1.jsx
+design_handoff_commute_board/board-v4.jsx
+design_handoff_commute_board/commute-board.html
+design_handoff_commute_board/README.md
