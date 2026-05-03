@@ -25,6 +25,7 @@ export type TrainStatus = 'On-Time' | 'Late' | 'Early';
 export interface Departure {
   id: string;
   departureTime: Date;
+  arrivalTime?: Date; // live arrival at destination stop
   destination: string;
   route: string;
   status?: TrainStatus;

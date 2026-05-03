@@ -77,6 +77,9 @@ export function useDepartures(mode: CommuteMode): UseDeparturesReturn {
           trainDeparture: {
             id: opt.trainDeparture.id,
             departureTime: new Date(trainDepartTime),
+            ...(opt.trainDeparture.arrivalTime
+              ? { arrivalTime: new Date(opt.trainDeparture.arrivalTime) }
+              : {}),
             destination: opt.trainDeparture.destination,
             route: opt.trainDeparture.route,
             status: opt.trainDeparture.status,

@@ -22,7 +22,7 @@ import {
 } from '@/components/board/primitives';
 
 // ─── Constants (mirror lib/time-calculations.ts locked spec) ──────────────────
-const HARLEM_LINE_DURATION_MIN = 63;
+const HARLEM_LINE_DURATION_MIN = 63; // fallback only — live data from GTFS preferred
 const SIX_TRAIN_DURATION_MIN = 15;
 const SIX_TRAIN_WALK_MIN = 6;
 const GCT_PLATFORM_WALK_MIN = 6;
@@ -265,8 +265,8 @@ function buildLegs(departure: DepartureOption, mode: CommuteMode): Leg[] {
   const track = trainDeparture.platform ?? '–';
 
   if (mode === 'home') {
-    // AM: Home → Goldens Bridge (drive) → Grand Central (Harlem Line) → Spring St (6 train)
-    const gctArrival = addMinutes(trainDeparture.departureTime, HARLEM_LINE_DURATION_MIN);
+    const gctArrival = trainDeparture.arrivalTime ?? addMinutes(trainDeparture.departureTime, HARLEM_LINE_DURATION_MIN);
+    const harlemMin = Math.round((gctArrival.getTime() - trainDeparture.departureTime.getTime()) / 60_000);
     const springStArrival = addMinutes(gctArrival, GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN);
     return [
       {
@@ -279,12 +279,12 @@ function buildLegs(departure: DepartureOption, mode: CommuteMode): Leg[] {
       {
         time: fmt(trainDeparture.departureTime),
         name: 'Goldens Bridge',
-        meta: `Harlem Line · trk ${track} · ${HARLEM_LINE_DURATION_MIN} min`,
+        meta: `Harlem Line · trk ${track} · ${harlemMin} min`,
       },
       {
         time: fmt(gctArrival),
         name: 'Grand Central',
-        meta: `6 train Downtown · ${SIX_TRAIN_DURATION_MIN} min`,
+        meta: `6 train Downtown · ${SIX_TRAIN_DURATION_MIN} min est.`,
       },
       {
         time: fmt(springStArrival),
@@ -294,9 +294,9 @@ function buildLegs(departure: DepartureOption, mode: CommuteMode): Leg[] {
       },
     ];
   } else {
-    // PM: Office → Spring St (walk) → Grand Central (6 train) → Goldens Bridge (Harlem Line)
     const sixDep = sixTrainDeparture?.departureTime ?? addMinutes(leaveByTime, SIX_TRAIN_WALK_MIN);
-    const gbtArrival = addMinutes(trainDeparture.departureTime, 60);
+    const gbtArrival = trainDeparture.arrivalTime ?? addMinutes(trainDeparture.departureTime, HARLEM_LINE_DURATION_MIN);
+    const harlemMin = Math.round((gbtArrival.getTime() - trainDeparture.departureTime.getTime()) / 60_000);
     return [
       {
         time: fmt(leaveByTime),
@@ -306,12 +306,12 @@ function buildLegs(departure: DepartureOption, mode: CommuteMode): Leg[] {
       {
         time: fmt(sixDep),
         name: 'Spring St',
-        meta: `6 train Uptown · ${sixTrainDeparture ? Math.round((new Date(sixTrainDeparture.arrivalTime).getTime() - new Date(sixTrainDeparture.departureTime).getTime()) / 60000) : SIX_TRAIN_DURATION_MIN} min`,
+        meta: `6 train Uptown · ${sixTrainDeparture ? Math.round((sixTrainDeparture.arrivalTime.getTime() - sixTrainDeparture.departureTime.getTime()) / 60_000) : SIX_TRAIN_DURATION_MIN} min`,
       },
       {
         time: fmt(trainDeparture.departureTime),
         name: 'Grand Central',
-        meta: `Harlem Line · trk ${track} · 60 min`,
+        meta: `Harlem Line · trk ${track} · ${harlemMin} min`,
       },
       {
         time: fmt(gbtArrival),
@@ -333,9 +333,15 @@ function ItinerarySection({
   accent: string;
 }) {
   const legs = buildLegs(departure, mode);
+  const sixTrainMin = departure.sixTrainDeparture
+    ? Math.round((departure.sixTrainDeparture.arrivalTime.getTime() - departure.sixTrainDeparture.departureTime.getTime()) / 60_000)
+    : SIX_TRAIN_DURATION_MIN;
+  const harlemMin = departure.trainDeparture.arrivalTime
+    ? Math.round((departure.trainDeparture.arrivalTime.getTime() - departure.trainDeparture.departureTime.getTime()) / 60_000)
+    : HARLEM_LINE_DURATION_MIN;
   const totalMin = mode === 'home'
-    ? (departure.driveInfo?.durationMinutes ?? 20) + HARLEM_LINE_DURATION_MIN + GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN + OFFICE_WALK_MIN
-    : SIX_TRAIN_WALK_MIN + SIX_TRAIN_DURATION_MIN + GCT_PLATFORM_WALK_MIN + 60;
+    ? (departure.driveInfo?.durationMinutes ?? 20) + harlemMin + GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN + OFFICE_WALK_MIN
+    : SIX_TRAIN_WALK_MIN + sixTrainMin + GCT_PLATFORM_WALK_MIN + harlemMin;
 
   return (
     <>
@@ -534,8 +540,7 @@ function ExpandedRow({
   }, []);
 
   const track = dep.trainDeparture.platform ?? '–';
-  const gctArrival = addMinutes(dep.trainDeparture.departureTime, HARLEM_LINE_DURATION_MIN);
-  const gbtArrival = addMinutes(dep.trainDeparture.departureTime, 60);
+  const trainArrival = dep.trainDeparture.arrivalTime ?? addMinutes(dep.trainDeparture.departureTime, HARLEM_LINE_DURATION_MIN);
 
   const miniLegs =
     mode === 'home'
@@ -543,13 +548,13 @@ function ExpandedRow({
           { l: 'Drive', t: dep.driveInfo ? `${dep.driveInfo.durationMinutes}m` : '–', sub: dep.driveInfo?.trafficLevel ?? '–' },
           {
             l: 'Harlem Line',
-            t: `${fmt(dep.trainDeparture.departureTime)}→${fmt(gctArrival)}`,
+            t: `${fmt(dep.trainDeparture.departureTime)}→${fmt(trainArrival)}`,
             sub: `trk ${track}`,
           },
           {
             l: '6 train',
-            t: `${fmt(gctArrival)}→${fmt(addMinutes(gctArrival, GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN))}`,
-            sub: 'Downtown · 8m',
+            t: `${fmt(trainArrival)}→${fmt(addMinutes(trainArrival, GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN))}`,
+            sub: `Downtown · est. ${SIX_TRAIN_DURATION_MIN}m`,
           },
         ]
       : [
@@ -558,20 +563,20 @@ function ExpandedRow({
             ? {
                 l: '6 train',
                 t: `${fmt(dep.sixTrainDeparture.departureTime)}→${fmt(dep.sixTrainDeparture.arrivalTime)}`,
-                sub: 'Uptown · 8m',
+                sub: `Uptown · ${Math.round((dep.sixTrainDeparture.arrivalTime.getTime() - dep.sixTrainDeparture.departureTime.getTime()) / 60_000)}m`,
               }
             : { l: '6 train', t: '–', sub: 'Uptown' },
           {
             l: 'Harlem Line',
-            t: `${fmt(dep.trainDeparture.departureTime)}→${fmt(gbtArrival)}`,
+            t: `${fmt(dep.trainDeparture.departureTime)}→${fmt(trainArrival)}`,
             sub: `trk ${track}`,
           },
         ];
 
   // Total door-to-door minutes
   const arrivalTime = mode === 'home'
-    ? addMinutes(gctArrival, GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN + OFFICE_WALK_MIN)
-    : gbtArrival;
+    ? addMinutes(trainArrival, GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN + OFFICE_WALK_MIN)
+    : trainArrival;
   const totalMin = Math.round((arrivalTime.getTime() - dep.leaveByTime.getTime()) / 60_000);
 
   // Buffer at connection point

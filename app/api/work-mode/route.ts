@@ -56,8 +56,19 @@ async function fetchHarlemLineDepartures() {
 
       const delay = gcStop.departure?.delay || 0;
 
+      const gbStop = stops[gbIndex];
+      const rawGbTime = gbStop.arrival?.time || gbStop.departure?.time;
+      const gbTimestamp = rawGbTime
+        ? (typeof rawGbTime === 'object' && 'low' in rawGbTime
+            ? (rawGbTime as any).low
+            : typeof rawGbTime === 'number'
+            ? rawGbTime
+            : parseInt(String(rawGbTime)))
+        : null;
+
       departures.push({
         departureTime: new Date(deptTimestamp * 1000).toISOString(),
+        ...(gbTimestamp ? { arrivalTime: new Date(gbTimestamp * 1000).toISOString() } : {}),
         stopId: gcStop.stopId || 'GC',
         destination: 'Goldens Bridge',
         status: delay > 60 ? 'Late' : delay < -60 ? 'Early' : 'On-Time',

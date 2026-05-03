@@ -106,19 +106,24 @@ async function fetchHarlemLineDepartures() {
 
       if (deptTimestamp < now_timestamp) continue;
 
-      // Calculate delay
       const delay = stopTimeUpdate.departure?.delay || 0;
-
-      // Determine status
       let status = 'On-Time';
-      if (delay > 60) {
-        status = 'Late';
-      } else if (delay < -60) {
-        status = 'Early';
-      }
+      if (delay > 60) status = 'Late';
+      else if (delay < -60) status = 'Early';
+
+      const gcStop = stops[gcIndex];
+      const rawGctTime = gcStop.arrival?.time || gcStop.departure?.time;
+      const gctTimestamp = rawGctTime
+        ? (typeof rawGctTime === 'object' && 'low' in rawGctTime
+            ? (rawGctTime as any).low
+            : typeof rawGctTime === 'number'
+            ? rawGctTime
+            : parseInt(String(rawGctTime)))
+        : null;
 
       departures.push({
         departureTime: new Date(deptTimestamp * 1000).toISOString(),
+        ...(gctTimestamp ? { arrivalTime: new Date(gctTimestamp * 1000).toISOString() } : {}),
         stopId: gbStopId,
         destination: 'Grand Central',
         status,
@@ -160,7 +165,6 @@ export async function GET() {
       );
     }
 
-    // Fetch train departures and drive time in parallel
     const [allDepartures, driveTimeResult] = await Promise.all([
       fetchHarlemLineDepartures(),
       getDriveTime(HOME_ADDRESS, GOLDENS_BRIDGE_ADDRESS),
@@ -171,7 +175,6 @@ export async function GET() {
       (train) => train.destination === 'Grand Central'
     );
 
-    // Calculate home mode departures with leave-by times
     const commuteOptions = calculateHomeModeDepartures(
       trainDepartures,
       driveTimeResult.live ? driveTimeResult.data : undefined

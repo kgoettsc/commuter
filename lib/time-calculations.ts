@@ -47,16 +47,6 @@ function getHomeBuffers(departureTime: DateTime): TimeBuffers {
   return { drive: 15, parkingWalk: 5 };
 }
 
-/**
- * Calculate Home mode departures (home → Goldens Bridge station)
- *
- * Combines Metro-North train schedules with drive time calculations to determine
- * when to leave home to catch each train.
- *
- * @param trainDepartures - Harlem Line departures from Goldens Bridge
- * @param liveDriveData - Optional live drive time data from Google Maps
- * @returns Array of commute options with leave-by times
- */
 export function calculateHomeModeDepartures(
   trainDepartures: HarlemLineDeparture[],
   liveDriveData?: DriveTimeData
@@ -80,10 +70,10 @@ export function calculateHomeModeDepartures(
       minutes: driveMinutes + buffers.parkingWalk,
     });
 
-    // Build departure object
     const departure: Departure = {
       id: train.tripId,
       departureTime: mnDepartureTime.toJSDate(),
+      ...(train.arrivalTime ? { arrivalTime: new Date(train.arrivalTime) } : {}),
       destination: train.destination,
       route: 'Harlem Line',
       status: train.status as any,
@@ -98,10 +88,8 @@ export function calculateHomeModeDepartures(
       isLive: !!liveDriveData,
     };
 
-    // Calculate total duration
     const totalDurationMinutes = driveMinutes + buffers.parkingWalk;
 
-    // Build commute option
     options.push({
       trainDeparture: departure,
       driveInfo,
@@ -127,7 +115,7 @@ const WORK_MODE_CONSTANTS = {
  * Work mode option - extends CommuteOption with 6 train details
  */
 export interface WorkModeOption extends CommuteOption {
-  sixTrainDeparture: {
+  sixTrainDeparture?: {
     departureTime: Date;
     arrivalTime: Date;
   };
@@ -179,25 +167,21 @@ export function calculateWorkModeDepartures(
       minutes: WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES,
     });
 
-    // Build Metro-North departure object
     const departure: Departure = {
       id: harlemDep.tripId,
       departureTime: harlemTime.toJSDate(),
+      ...(harlemDep.arrivalTime ? { arrivalTime: new Date(harlemDep.arrivalTime) } : {}),
       destination: harlemDep.destination,
       route: 'Harlem Line',
       status: harlemDep.status as any,
       delay: harlemDep.delay,
     };
 
-    // Compute actual ride time from the live 6-train data (departureTime → arrivalTimeGCT).
-    // Stub fallback data encodes 15 min; live data reflects the real trip time.
     const gctArrivalTime = DateTime.fromISO(latestSix.arrivalTimeGCT);
     const actualRideMinutes = Math.round(
       gctArrivalTime.diff(sixDepartureTime, 'minutes').minutes
     );
 
-    // Build subway info (reusing DriveInfo type for consistency)
-    // In work mode, "drive" represents the 6 train segment
     const subwayInfo: DriveInfo = {
       durationMinutes: actualRideMinutes,
       durationText: `${actualRideMinutes} mins`,
@@ -205,11 +189,15 @@ export function calculateWorkModeDepartures(
       isLive: true,
     };
 
-    // Calculate total commute duration (walk to subway + 6 train + walk to platform)
+    const harlemDurationMinutes = harlemDep.arrivalTime
+      ? Math.round((new Date(harlemDep.arrivalTime).getTime() - harlemTime.toMillis()) / 60_000)
+      : 60;
+
     const totalDurationMinutes =
       WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES +
       actualRideMinutes +
-      WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES;
+      WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES +
+      harlemDurationMinutes;
 
     // Build 6 train departure details
     const sixTrainDeparture = {

@@ -103,13 +103,13 @@ function DetailView({
   const track = departure.trainDeparture.platform ?? '–';
   const isHome = mode === 'work'; // PM = going home
 
-  // Computed times
-  const gctArrival = addMinutes(departure.trainDeparture.departureTime, HARLEM_LINE_DURATION_MIN);
-  const gbtArrival = addMinutes(departure.trainDeparture.departureTime, 60);
-  const springStArrival = addMinutes(
-    gctArrival,
-    GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN
-  );
+  // Computed times — prefer live arrivalTime from GTFS feed, fall back to constant
+  const trainArrival = departure.trainDeparture.arrivalTime
+    ?? addMinutes(departure.trainDeparture.departureTime, HARLEM_LINE_DURATION_MIN);
+  // home mode: trainArrival = GCT arrival; work mode: trainArrival = Goldens Bridge arrival
+  const gctArrival = trainArrival;
+  const gbtArrival = trainArrival;
+  const springStArrival = addMinutes(gctArrival, GCT_PLATFORM_WALK_MIN + SIX_TRAIN_DURATION_MIN);
 
   // Buffer at GCT connection
   let bufferMin: string = '–';
@@ -121,7 +121,6 @@ function DetailView({
     bufferMin = `${Math.max(0, Math.round(bufMs / 60_000))}m`;
   }
 
-  // Total door-to-door
   const arrivalTime = isHome ? gbtArrival : springStArrival;
   const totalMin = Math.round(
     (arrivalTime.getTime() - departure.leaveByTime.getTime()) / 60_000
@@ -263,7 +262,7 @@ function DetailView({
                 accent={accent}
               >
                 <div className="text-[11px]" style={{ color: 'var(--night-mute)' }}>
-                  60 min · trk {track}
+                  {Math.round((gbtArrival.getTime() - departure.trainDeparture.departureTime.getTime()) / 60_000)} min · trk {track}
                 </div>
               </Step>
               <Step
@@ -312,7 +311,7 @@ function DetailView({
                 accent={accent}
               >
                 <div className="text-[11px]" style={{ color: 'var(--night-mute)' }}>
-                  {SIX_TRAIN_DURATION_MIN} min · 7 stops on 6 Downtown to Spring St
+                  {SIX_TRAIN_DURATION_MIN} min est. · 7 stops on 6 Downtown to Spring St
                 </div>
               </Step>
               <Step

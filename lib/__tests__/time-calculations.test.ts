@@ -88,7 +88,7 @@ describe('calculateWorkModeDepartures', () => {
       // Should select 6-3 (latest viable train)
       // 6-3 arrives at 5:03 PM + 6 min = 5:09 PM < 5:10 PM ✓
       // 6-4 arrives at 5:08 PM + 6 min = 5:14 PM > 5:10 PM ✗
-      expect(result[0].sixTrainDeparture.departureTime).toEqual(
+      expect(result[0].sixTrainDeparture?.departureTime).toEqual(
         DateTime.fromISO('2026-04-17T16:55:00.000Z').toJSDate()
       );
     });
@@ -255,10 +255,10 @@ describe('calculateWorkModeDepartures', () => {
       expect(option.trainDeparture.delay).toBe(5);
 
       // Verify sixTrainDeparture
-      expect(option.sixTrainDeparture.departureTime).toEqual(
+      expect(option.sixTrainDeparture?.departureTime).toEqual(
         DateTime.fromISO('2026-04-17T16:30:00.000Z').toJSDate()
       );
-      expect(option.sixTrainDeparture.arrivalTime).toEqual(
+      expect(option.sixTrainDeparture?.arrivalTime).toEqual(
         DateTime.fromISO('2026-04-17T16:45:00.000Z').toJSDate()
       );
 

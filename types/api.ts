@@ -20,6 +20,7 @@ export interface ApiResponse<T> {
 export interface SixTrainDeparture {
   departureTime: string;
   arrivalTimeGCT: string;
+  arrivalTimeSpringSt?: string; // southbound only: arrival at Spring St from GCT
   routeId: string;
   tripId: string;
 }
@@ -35,6 +36,7 @@ export type SixTrainResponse = ApiResponse<SixTrainData>;
  */
 export interface HarlemLineDeparture {
   departureTime: string;
+  arrivalTime?: string; // arrival at destination stop (GCT for home mode, GB for work mode)
   stopId: string;
   destination: string;
   status: string;
