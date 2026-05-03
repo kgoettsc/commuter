@@ -295,6 +295,12 @@ function buildLegs(departure: DepartureOption, mode: CommuteMode): Leg[] {
     ];
   } else {
     const sixDep = sixTrainDeparture?.departureTime ?? addMinutes(leaveByTime, SIX_TRAIN_WALK_MIN);
+    const sixMin = sixTrainDeparture
+      ? Math.round((sixTrainDeparture.arrivalTime.getTime() - sixTrainDeparture.departureTime.getTime()) / 60_000)
+      : SIX_TRAIN_DURATION_MIN;
+    const gctSubwayArrival = sixTrainDeparture
+      ? sixTrainDeparture.arrivalTime
+      : addMinutes(trainDeparture.departureTime, -GCT_PLATFORM_WALK_MIN);
     const gbtArrival = trainDeparture.arrivalTime ?? addMinutes(trainDeparture.departureTime, HARLEM_LINE_DURATION_MIN);
     const harlemMin = Math.round((gbtArrival.getTime() - trainDeparture.departureTime.getTime()) / 60_000);
     return [
@@ -306,12 +312,17 @@ function buildLegs(departure: DepartureOption, mode: CommuteMode): Leg[] {
       {
         time: fmt(sixDep),
         name: 'Spring St',
-        meta: `6 train Uptown · ${sixTrainDeparture ? Math.round((sixTrainDeparture.arrivalTime.getTime() - sixTrainDeparture.departureTime.getTime()) / 60_000) : SIX_TRAIN_DURATION_MIN} min`,
+        meta: `6 train Uptown · ${sixMin} min`,
+      },
+      {
+        time: fmt(gctSubwayArrival),
+        name: 'Grand Central',
+        meta: `Walk ${GCT_PLATFORM_WALK_MIN} min to Metro-North platform`,
       },
       {
         time: fmt(trainDeparture.departureTime),
-        name: 'Grand Central',
-        meta: `Harlem Line · trk ${track} · ${harlemMin} min`,
+        name: 'Harlem Line',
+        meta: `trk ${track} · ${harlemMin} min`,
       },
       {
         time: fmt(gbtArrival),
@@ -680,11 +691,14 @@ function AlertTicker({ alerts }: { alerts: Alert[] }) {
       className="mt-auto py-2 overflow-hidden"
       style={{ background: 'var(--night-ink)', color: 'var(--night)' }}
     >
-      <div className="flex whitespace-nowrap ticker-track">
+      <div
+        className="w-max ticker-track"
+        style={{ animationDuration: `${alerts.length * 6}s` }}
+      >
         {doubled.map((a, i) => (
           <span
             key={i}
-            className="px-6 text-[11px] uppercase tracking-board font-semibold inline-flex items-center gap-3"
+            className="px-6 text-[11px] uppercase tracking-board font-semibold inline-flex items-center gap-3 shrink-0"
           >
             <span
               className="w-1 h-1 rounded-full"

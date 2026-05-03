@@ -173,7 +173,7 @@
   to   { transform: translateX(-50%); }
 }
 
-.ticker-track { animation: ticker 4.4s linear infinite; }
+.ticker-track { animation: ticker 20s linear infinite; will-change: transform; }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }

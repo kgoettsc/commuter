@@ -256,6 +256,16 @@ function DetailView({
                 </div>
               </Step>
               <Step
+                time={fmt(departure.sixTrainDeparture?.arrivalTime ?? addMinutes(departure.trainDeparture.departureTime, -GCT_PLATFORM_WALK_MIN))}
+                dot="var(--night-ink)"
+                label="Arrive Grand Central · subway level"
+                accent={accent}
+              >
+                <div className="text-[11px]" style={{ color: 'var(--night-mute)' }}>
+                  Walk {GCT_PLATFORM_WALK_MIN} min to Metro-North platform
+                </div>
+              </Step>
+              <Step
                 time={fmt(departure.trainDeparture.departureTime)}
                 dot={accent}
                 label={`Harlem Line · ${departure.trainDeparture.destination}`}

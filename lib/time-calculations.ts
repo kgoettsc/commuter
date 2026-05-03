@@ -106,9 +106,10 @@ export function calculateHomeModeDepartures(
  * LOCKED SPEC - Do not modify these values
  */
 const WORK_MODE_CONSTANTS = {
-  SPRING_ST_TO_GCT_MINUTES: 15, // 6 train default: wait + ride time
-  GCT_PLATFORM_WALK_MINUTES: 6, // Walk from subway to Metro-North platform
+  SPRING_ST_TO_GCT_MINUTES: 15,   // 6 train default: wait + ride time
+  GCT_PLATFORM_WALK_MINUTES: 6,   // Walk from subway to Metro-North platform
   WORK_TO_SPRING_ST_WALK_MINUTES: 6, // Walk from work to Spring St subway
+  SIX_TRAIN_LOOKBACK_MINUTES: 30, // Max gap between 6-train departure and Metro-North departure
 } as const;
 
 /**
@@ -146,26 +147,9 @@ export function calculateWorkModeDepartures(
   for (const harlemDep of harlemDepartures) {
     const harlemTime = DateTime.fromISO(harlemDep.departureTime);
 
-    // Find all 6 trains that arrive at GCT with enough time for the platform walk
-    const viableSixTrains = sixTrainDepartures.filter((six) => {
-      const gctArrival = DateTime.fromISO(six.arrivalTimeGCT);
-      const withWalk = gctArrival.plus({
-        minutes: WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES,
-      });
-      return withWalk <= harlemTime;
-    });
-
-    // Skip this Metro-North departure if no viable 6 train connection exists
-    if (viableSixTrains.length === 0) continue;
-
-    // Select the latest viable 6 train (maximizes time at work)
-    const latestSix = viableSixTrains[viableSixTrains.length - 1];
-
-    // Calculate leave-by time: 6 train departure - walk to Spring St
-    const sixDepartureTime = DateTime.fromISO(latestSix.departureTime);
-    const leaveBy = sixDepartureTime.minus({
-      minutes: WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES,
-    });
+    const harlemDurationMinutes = harlemDep.arrivalTime
+      ? Math.round((new Date(harlemDep.arrivalTime).getTime() - harlemTime.toMillis()) / 60_000)
+      : 60;
 
     const departure: Departure = {
       id: harlemDep.tripId,
@@ -177,41 +161,73 @@ export function calculateWorkModeDepartures(
       delay: harlemDep.delay,
     };
 
+    // A viable 6 train must arrive at the Metro-North platform (GCT arrival + walk)
+    // in time, AND within 30 min of the Metro-North departure. Gap measured from
+    // platform arrival so the GCT walk is included in the window.
+    const viableSixTrains = sixTrainDepartures.filter((six) => {
+      const platformArrival = DateTime.fromISO(six.arrivalTimeGCT).plus({
+        minutes: WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES,
+      });
+      if (platformArrival > harlemTime) return false;
+      return harlemTime.diff(platformArrival, 'minutes').minutes <= WORK_MODE_CONSTANTS.SIX_TRAIN_LOOKBACK_MINUTES;
+    });
+
+    if (viableSixTrains.length === 0) {
+      // No live 6-train within window — use static estimate
+      const leaveBy = harlemTime.minus({
+        minutes:
+          WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES +
+          WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES +
+          WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES,
+      });
+      options.push({
+        trainDeparture: departure,
+        driveInfo: {
+          durationMinutes: WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES,
+          durationText: `${WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES} mins`,
+          trafficLevel: 'light',
+          isLive: false,
+        },
+        leaveByTime: leaveBy.toJSDate(),
+        totalDurationMinutes:
+          WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES +
+          WORK_MODE_CONSTANTS.SPRING_ST_TO_GCT_MINUTES +
+          WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES +
+          harlemDurationMinutes,
+      });
+      continue;
+    }
+
+    // Select the latest viable 6 train (maximizes time at work)
+    const latestSix = viableSixTrains[viableSixTrains.length - 1];
+    const sixDepartureTime = DateTime.fromISO(latestSix.departureTime);
+    const leaveBy = sixDepartureTime.minus({
+      minutes: WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES,
+    });
+
     const gctArrivalTime = DateTime.fromISO(latestSix.arrivalTimeGCT);
     const actualRideMinutes = Math.round(
       gctArrivalTime.diff(sixDepartureTime, 'minutes').minutes
     );
 
-    const subwayInfo: DriveInfo = {
-      durationMinutes: actualRideMinutes,
-      durationText: `${actualRideMinutes} mins`,
-      trafficLevel: 'light',
-      isLive: true,
-    };
-
-    const harlemDurationMinutes = harlemDep.arrivalTime
-      ? Math.round((new Date(harlemDep.arrivalTime).getTime() - harlemTime.toMillis()) / 60_000)
-      : 60;
-
-    const totalDurationMinutes =
-      WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES +
-      actualRideMinutes +
-      WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES +
-      harlemDurationMinutes;
-
-    // Build 6 train departure details
-    const sixTrainDeparture = {
-      departureTime: sixDepartureTime.toJSDate(),
-      arrivalTime: DateTime.fromISO(latestSix.arrivalTimeGCT).toJSDate(),
-    };
-
-    // Build work mode option
     options.push({
       trainDeparture: departure,
-      driveInfo: subwayInfo,
+      driveInfo: {
+        durationMinutes: actualRideMinutes,
+        durationText: `${actualRideMinutes} mins`,
+        trafficLevel: 'light',
+        isLive: true,
+      },
       leaveByTime: leaveBy.toJSDate(),
-      totalDurationMinutes,
-      sixTrainDeparture,
+      totalDurationMinutes:
+        WORK_MODE_CONSTANTS.WORK_TO_SPRING_ST_WALK_MINUTES +
+        actualRideMinutes +
+        WORK_MODE_CONSTANTS.GCT_PLATFORM_WALK_MINUTES +
+        harlemDurationMinutes,
+      sixTrainDeparture: {
+        departureTime: sixDepartureTime.toJSDate(),
+        arrivalTime: gctArrivalTime.toJSDate(),
+      },
     });
   }
 
